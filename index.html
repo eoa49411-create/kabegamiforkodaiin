@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>７クラKODA予定表メーカー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#DDE0EC;--surface:#EBEDf5;--border:#C4C8DC;
+  --text:#1A1828;--muted:#5A5878;--accent:#8B3A7A;
+  --d1:#3A6090;--d2:#A03080;--r:12px;
+  --shadow:0 2px 14px rgba(60,50,100,.1);
+}
+body{font-family:'Noto Serif JP',serif;background:var(--bg);color:var(--text);min-height:100dvh;padding-bottom:60px}
+.app-header{background:linear-gradient(135deg,#5B6BAF 0%,#8B3A7A 100%);color:#fff;padding:18px 20px 14px;text-align:center}
+.app-header h1{font-size:1rem;font-weight:400;letter-spacing:.3em}
+.app-header p{font-size:.62rem;opacity:.6;margin-top:5px;letter-spacing:.12em}
+.wrap{max-width:480px;margin:0 auto;padding:0 14px}
+.section{background:var(--surface);border-radius:var(--r);padding:14px;margin-top:14px;box-shadow:var(--shadow)}
+.sec-label{font-size:.6rem;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.days-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.day-card{background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.day-head{padding:10px 12px 8px;color:#fff;display:flex;flex-direction:column}
+.d1 .day-head{background:linear-gradient(135deg,#3A6090,#5B80B0)}
+.d2 .day-head{background:linear-gradient(135deg,#8B3A7A,#B05090)}
+.day-head .dnum{font-size:.78rem;font-weight:600;letter-spacing:.08em;display:block}
+.day-head .dinfo{font-size:.58rem;opacity:.85;margin-top:2px;line-height:1.5;display:block}
+.events-list{padding:6px 8px 2px;min-height:40px}
+
+.ev-row{
+  display:grid;
+  grid-template-columns:auto auto 1fr auto;
+  grid-template-rows:auto auto auto;
+  gap:2px 4px;
+  padding:5px 0;
+  border-bottom:1px solid var(--border);
+  align-items:center;
+}
+.ev-row:last-child{border-bottom:none}
+.ev-row .lbl-start{ grid-column:1; grid-row:1; font-size:.5rem; color:var(--muted); text-align:center; }
+.ev-row .lbl-end  { grid-column:2; grid-row:1; font-size:.5rem; color:var(--muted); text-align:center; }
+.ev-row .lbl-name { grid-column:3; grid-row:1; font-size:.5rem; color:var(--muted); padding-left:4px; }
+.ev-row .ev-time  { grid-row:2; font-family:'Noto Serif JP',serif;font-size:.58rem;width:48px;padding:3px 2px;border:1px solid var(--border);border-radius:5px;background:var(--bg);text-align:center;appearance:none;cursor:pointer;}
+.ev-row .ev-name  { grid-column:3;grid-row:2; font-family:'Noto Serif JP',serif;font-size:.65rem;padding:5px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg);width:100%;min-height:52px;resize:vertical;line-height:1.5;}
+.ev-row .ev-del   { grid-column:4;grid-row:1/3; background:none;border:none;cursor:pointer;color:#B8B0C8;font-size:.85rem;align-self:center;padding:2px;transition:color .12s;}
+.ev-row .ev-del:hover{color:#c05090}
+.ev-row .ev-colors{ grid-column:1/4; grid-row:3; display:flex; gap:4px; padding:3px 0 1px; flex-wrap:wrap; }
+.ev-swatch{width:18px;height:18px;border-radius:4px;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .1s,border-color .1s;}
+.ev-swatch:hover{transform:scale(1.15)}
+.ev-swatch.sel{border-color:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.3);}
+
+.add-btn{width:100%;margin-top:6px;padding:7px;border:1.5px dashed var(--border);border-radius:7px;background:none;font-family:'Noto Serif JP',serif;font-size:.62rem;color:var(--muted);cursor:pointer;letter-spacing:.1em;transition:all .14s}
+.add-btn:hover{border-color:var(--accent);color:var(--accent)}
+.preset-list{display:flex;flex-wrap:wrap;gap:6px}
+.preset-item{display:flex;align-items:center;border:1px solid var(--border);border-radius:20px;overflow:hidden;font-size:.6rem}
+.pname{padding:5px 8px;background:var(--bg);color:var(--text);white-space:nowrap}
+.pbtn{padding:5px 8px;border-left:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--muted);font-size:.58rem;transition:all .1s;user-select:none}
+.pbtn:hover{background:var(--accent);color:#fff}
+
+/* ── テーマ選択 ── */
+.theme-row{display:flex;gap:10px;margin-top:10px}
+.theme-btn{
+  flex:1;padding:10px 6px;border-radius:10px;border:2px solid var(--border);
+  cursor:pointer;font-family:'Noto Serif JP',serif;font-size:.62rem;letter-spacing:.05em;
+  background:var(--surface);color:var(--text);transition:all .15s;text-align:center;
+}
+.theme-btn.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(139,58,122,.18);}
+.theme-swatch{width:100%;height:26px;border-radius:6px;margin-bottom:6px;}
+
+.gen-btn{display:block;width:100%;margin-top:18px;padding:15px;background:linear-gradient(135deg,#5B6BAF,#8B3A7A);color:#fff;border:none;border-radius:var(--r);font-family:'Noto Serif JP',serif;font-size:.9rem;letter-spacing:.3em;cursor:pointer;box-shadow:0 4px 20px rgba(100,60,140,.3);transition:transform .14s,opacity .14s}
+.gen-btn:active{transform:scale(.98);opacity:.9}
+.gen-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+#preview-sec{display:none;margin-top:24px}
+.prev-lbl{font-size:.6rem;color:var(--muted);letter-spacing:.2em;text-align:center;margin-bottom:12px}
+.prev-wrap{display:flex;justify-content:center}
+#preview-img{width:148px;height:321px;border-radius:18px;box-shadow:0 12px 48px rgba(80,50,120,.3);display:block}
+.save-hint{text-align:center;margin-top:10px;font-size:.6rem;color:var(--muted);letter-spacing:.05em}
+#wallpaper-canvas{display:none}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>７クラKODA予定表メーカー</h1>
+  <p>KODAIRA祭 2026 · 6/13–14</p>
+</header>
+
+<div class="wrap">
+  <div class="days-grid">
+    <div class="day-card d1">
+      <div class="day-head">
+        <div class="dnum">Day 1</div>
+        <div class="dinfo">6/13 sat · 10:00–19:00</div>
+      </div>
+      <div class="events-list" id="day1-list"></div>
+      <div style="padding:0 8px 8px">
+        <button class="add-btn" onclick="addEvent('day1')">＋ 追加</button>
+      </div>
+    </div>
+    <div class="day-card d2">
+      <div class="day-head">
+        <div class="dnum">Day 2</div>
+        <div class="dinfo">6/14 sun · 10:00–19:00</div>
+      </div>
+      <div class="events-list" id="day2-list"></div>
+      <div style="padding:0 8px 8px">
+        <button class="add-btn" onclick="addEvent('day2')">＋ 追加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="sec-label">テーマ</p>
+    <div class="theme-row">
+      <button class="theme-btn" id="theme-color" onclick="setTheme('color')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#7A88BF,#9088B8,#8868A8)"></div>
+        カラー（紫）
+      </button>
+      <button class="theme-btn active" id="theme-white" onclick="setTheme('white')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#f8f8f8,#e8e8e8);border:1px solid #ddd"></div>
+        シンプル（白）
+      </button>
+
+      <button class="theme-btn" id="theme-sparkle" onclick="setTheme('sparkle')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#8ab8dc,#7aaad0,#6090c0)"></div>
+        スパークル
+      </button>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="sec-label">クイック追加 — 右の数字でDayを選択</p>
+    <div class="preset-list" id="preset-list"></div>
+  </div>
+
+  <button class="gen-btn" id="gen-btn" onclick="generate()">壁紙を生成する</button>
+
+  <div id="preview-sec">
+    <p class="prev-lbl">PREVIEW</p>
+    <div class="prev-wrap"><img id="preview-img" alt="壁紙プレビュー"></div>
+    <p class="save-hint">📸 画像を長押しして「写真に追加」</p>
+  </div>
+</div>
+<canvas id="wallpaper-canvas"></canvas>
+
+<script>
+const state = { day1:[], day2:[] };
+let currentTheme = 'white';
+function setTheme(t){
+  currentTheme = t;
+  document.getElementById('theme-color').classList.toggle('active', t==='color');
+  document.getElementById('theme-white').classList.toggle('active', t==='white');
+  document.getElementById('theme-sparkle').classList.toggle('active', t==='sparkle');
+}
+
+const DAY_CONFIG = {
+  day1: { startH:10, startM:0, endH:19, endM:0,  dateStr:'6/13 sat', label:'Day 1' },
+  day2: { startH:10, startM:0, endH:19, endM:0,  dateStr:'6/14 sun', label:'Day 2' },
+};
+
+function genTimes(sh,sm,eh,em){
+  const r=[];let h=sh,m=sm;
+  while(h<eh||(h===eh&&m<=em)){
+    r.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+    m+=5;if(m>=60){m-=60;h++}
+  }
+  return r;
+}
+const T1=genTimes(10,0,19,0);
+const T2=genTimes(10,0,19,0);
+
+// ── メジャー8色プリセット ──
+const EV_COLORS = [
+  { hex:'#E05C8A', label:'ピンク'  },
+  { hex:'#5C8AE0', label:'ブルー'  },
+  { hex:'#5CC88A', label:'グリーン'},
+  { hex:'#E0A05C', label:'オレンジ'},
+  { hex:'#A05CE0', label:'パープル'},
+  { hex:'#5CC8D8', label:'シアン'  },
+  { hex:'#E0D85C', label:'イエロー'},
+  { hex:'#C85C5C', label:'レッド'  },
+];
+let colorIdx = {day1:0, day2:0};
+
+const PRESETS=[
+  '🌭 模擬店ー会計','🌭 模擬店ー調理','🌭 模擬店ー集客',
+  '🌭 模擬店ー裏方','🌭 模擬店ー責任者',
+  '🎪 KODA委員','🚶 ○○と回る',
+];
+
+function initPresets(){
+  const el=document.getElementById('preset-list');
+  PRESETS.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='preset-item';
+    d.innerHTML=`<span class="pname">${p}</span>`
+      +`<span class="pbtn" onclick="addPreset('day1','${p}')">1</span>`
+      +`<span class="pbtn" onclick="addPreset('day2','${p}')">2</span>`;
+    el.appendChild(d);
+  });
+}
+function addPreset(day,name){
+  const times=day==='day1'?T1:T2;
+  const color=EV_COLORS[colorIdx[day]%EV_COLORS.length].hex;
+  colorIdx[day]++;
+  state[day].push({timeStart:times[0],timeEnd:times[1]||times[0],name,color});
+  renderDay(day);
+}
+function addEvent(day){
+  const times=day==='day1'?T1:T2;
+  const color=EV_COLORS[colorIdx[day]%EV_COLORS.length].hex;
+  colorIdx[day]++;
+  state[day].push({timeStart:times[0],timeEnd:times[1]||times[0],name:'',color});
+  renderDay(day);
+}
+function removeEvent(day,idx){ state[day].splice(idx,1); renderDay(day); }
+
+function renderDay(day){
+  const list=document.getElementById(`${day}-list`);
+  const times=day==='day1'?T1:T2;
+  list.innerHTML='';
+  state[day].forEach((ev,i)=>{
+    const row=document.createElement('div');
+    row.className='ev-row';
+
+    // ── ラベル行 ──
+    const lblS=document.createElement('div'); lblS.className='lbl-start'; lblS.textContent='開始';
+    const lblE=document.createElement('div'); lblE.className='lbl-end';   lblE.textContent='終了';
+    const lblN=document.createElement('div'); lblN.className='lbl-name';  lblN.textContent='予定名';
+
+    // ── 開始時刻 ──
+    const selS=document.createElement('select'); selS.className='ev-time';
+    times.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; if(t===ev.timeStart)o.selected=true; selS.appendChild(o); });
+    selS.addEventListener('change',e=>{ state[day][i].timeStart=e.target.value; });
+
+    // ── 終了時刻 ──
+    const selE=document.createElement('select'); selE.className='ev-time';
+    times.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; if(t===ev.timeEnd)o.selected=true; selE.appendChild(o); });
+    selE.addEventListener('change',e=>{ state[day][i].timeEnd=e.target.value; });
+
+    // ── 予定名 ──
+    const inp=document.createElement('textarea'); inp.className='ev-name';
+    inp.value=ev.name; inp.placeholder='予定名（改行で複数行）';
+    inp.rows=2;
+    inp.addEventListener('input',e=>{ state[day][i].name=e.target.value; });
+
+    // ── 削除 ──
+    const del=document.createElement('button'); del.className='ev-del'; del.textContent='×';
+    del.addEventListener('click',()=>removeEvent(day,i));
+
+    // ── 色スウォッチ ──
+    const colorRow=document.createElement('div'); colorRow.className='ev-colors';
+    EV_COLORS.forEach(c=>{
+      const sw=document.createElement('div');
+      sw.className='ev-swatch'+(ev.color===c.hex?' sel':'');
+      sw.style.background=c.hex;
+      sw.title=c.label;
+      sw.addEventListener('click',()=>{
+        state[day][i].color=c.hex;
+        renderDay(day);
+      });
+      colorRow.appendChild(sw);
+    });
+
+    row.append(lblS, lblE, lblN, selS, selE, inp, del, colorRow);
+    list.appendChild(row);
+  });
+}
+
+// ════════════════════════════════════════════
+// CANVAS
+// ════════════════════════════════════════════
+const CW=1290, CH=2796;
+const BLANK_Y=750;
+
+function hline(ctx,y,x1,x2,color,alpha=1,w=1){
+  ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=w;
+  ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();ctx.restore();
+}
+function drawSparkle(ctx,cx,cy,r,color,alpha,rays=8){
+  ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;
+  const rInner=r*0.15;
+  for(let i=0;i<rays;i++){
+    const a=i/rays*Math.PI*2;
+    ctx.lineWidth=r*0.09;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*rInner,cy+Math.sin(a)*rInner);
+    ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);ctx.stroke();
+  }
+  ctx.fillStyle=color;ctx.globalAlpha=alpha*1.2;
+  ctx.beginPath();ctx.arc(cx,cy,r*0.06,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+function drawPinwheel(ctx,cx,cy,size,alpha){
+  ctx.save();ctx.globalAlpha=alpha;
+  for(let i=0;i<8;i++){
+    const a=i/8*Math.PI*2,a1=a-0.18,a2=a+0.18;
+    const r1=size*0.08,r2=size;
+    ctx.fillStyle='#FFFFFF';
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a1)*r1,cy+Math.sin(a1)*r1);
+    ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);
+    ctx.lineTo(cx+Math.cos(a2)*r1,cy+Math.sin(a2)*r1);
+    ctx.closePath();ctx.fill();
+    const ap=a+0.28;
+    ctx.fillStyle='#E040A0';ctx.globalAlpha=alpha*0.75;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a2)*r1,cy+Math.sin(a2)*r1);
+    ctx.lineTo(cx+Math.cos(ap)*(r2*0.72),cy+Math.sin(ap)*(r2*0.72));
+    ctx.lineTo(cx+Math.cos(ap+.18)*r1,cy+Math.sin(ap+.18)*r1);
+    ctx.closePath();ctx.fill();ctx.globalAlpha=alpha;
+  }
+  ['#FF4040','#FFA020','#FFE020','#40E040','#4080FF','#8040E0'].forEach((c,i)=>{
+    const a=i/6*Math.PI*2;
+    ctx.strokeStyle=c;ctx.lineWidth=size*0.025;ctx.globalAlpha=alpha*1.1;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*size*0.1,cy+Math.sin(a)*size*0.1);ctx.stroke();
+  });
+  ctx.restore();
+}
+function toMin(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+
+// ────────────────────────────────────────────
+// drawDayCol
+// 構造:
+//   [ピル全体]
+//     ヘッダーゾーン (ピル幅全体の中央にDay N/日付/時間帯)
+//     ─────────────── セパレータ ───────────────
+//     グリッドゾーン
+//       左: 時刻ラベル (背景なし・シンプルテキスト)
+//       右: イベントバー
+// ────────────────────────────────────────────
+function drawDayCol(ctx, colX, colW, topY, dayKey, events){
+  const cfg    = DAY_CONFIG[dayKey];
+  const isWhite   = currentTheme === 'white';
+  const isSparkle = currentTheme === 'sparkle';
+
+  // テーマ別カラー
+  const COLOR  = isSparkle
+    ? (dayKey==='day1' ? '#FFFFFF'   : '#FFFFFF')
+    : isWhite
+    ? (dayKey==='day1' ? '#2A5090' : '#903078')
+    : (dayKey==='day1' ? '#A8D0F0' : '#F0A0D8');
+  const BG     = isSparkle
+    ? (dayKey==='day1' ? 'rgba(90,160,210,0.55)' : 'rgba(80,140,200,0.50)')
+    : isWhite
+    ? (dayKey==='day1' ? 'rgba(220,232,248,0.90)' : 'rgba(248,220,240,0.90)')
+    : (dayKey==='day1' ? 'rgba(48,80,130,0.58)'   : 'rgba(120,48,108,0.58)');
+  const gridLineHour  = isSparkle ? 'rgba(255,255,255,0.35)' : isWhite ? 'rgba(80,80,120,0.18)'  : 'rgba(255,255,255,0.28)';
+  const gridLineHalf  = isSparkle ? 'rgba(255,255,255,0.15)' : isWhite ? 'rgba(80,80,120,0.08)'  : 'rgba(255,255,255,0.12)';
+  const timeLabelHour = isSparkle ? 'rgba(255,255,255,0.95)' : isWhite ? 'rgba(30,30,60,0.80)'   : 'rgba(255,255,255,0.85)';
+  const timeLabelHalf = isSparkle ? 'rgba(255,255,255,0.55)' : isWhite ? 'rgba(30,30,60,0.40)'   : 'rgba(255,255,255,0.45)';
+  const textMain      = '#FFFFFF';
+  const textTime      = 'rgba(255,255,255,0.92)';
+  const sepColor      = COLOR;
+  const headerText    = isSparkle ? '#FFFFFF' : isWhite ? COLOR : COLOR;
+  const headerDate    = isSparkle ? 'rgba(255,255,255,0.92)' : isWhite ? 'rgba(40,40,80,0.80)'   : 'rgba(255,255,255,0.90)';
+  const headerRange   = isSparkle ? 'rgba(255,255,255,0.65)' : isWhite ? 'rgba(40,40,80,0.50)'   : 'rgba(255,255,255,0.58)';
+
+  const startMin = cfg.startH*60+cfg.startM;
+  const endMin   = cfg.endH*60+cfg.endM;
+  const totalMin = endMin - startMin;
+
+  // ── グリッド列の寸法 (ヘッダーとは独立して定義) ──
+  const PAD_L   = 12;   // ピル左端 → 時刻テキスト左端
+  const TIME_W  = 100;  // 時刻ラベル幅
+  const GAP_TG  = 10;   // 時刻〜バー間
+  const PAD_R   = 12;   // ピル右端余白
+  const GRID_X  = colX + PAD_L + TIME_W + GAP_TG;  // イベントバー左端
+  const GRID_W  = colW - PAD_L - TIME_W - GAP_TG - PAD_R;  // イベントバー幅
+
+  // ── ヘッダー各行の高さを積み上げで計算 ──
+  const HDR_TOP   = 16;   // topYからの余白
+  const DAY_FS    = 48;   // "Day N" フォントサイズ
+  const DATE_FS   = 24;   // 日付フォントサイズ
+  const RANGE_FS  = 20;   // 時間帯フォントサイズ
+  const HDR_GAP1  = 10;   // Day N → 日付
+  const HDR_GAP2  = 8;    // 日付 → 時間帯
+  const SEP_GAP   = 16;   // 時間帯 → セパレータ
+  const HDR_H = HDR_TOP + DAY_FS + HDR_GAP1 + DATE_FS + HDR_GAP2 + RANGE_FS + SEP_GAP + 8;
+
+  // ── ピルの高さ計算 ──
+  const BOT_PAD  = 60;
+  // 30分ごとの行高さを固定して縦を短くする
+  const PX_PER_30 = 72;   // 30分 = 72px (小さくして縦詰め)
+  const pxPerMin  = PX_PER_30 / 30;
+  const gridH    = totalMin * pxPerMin;
+  const pillH    = HDR_H + gridH + BOT_PAD;
+
+  // ── ピル背景 ──
+  ctx.save();
+  ctx.fillStyle = BG;
+  ctx.beginPath();
+  ctx.roundRect(colX + 6, topY - 8, colW - 12, pillH, 20);
+  ctx.fill();
+  ctx.restore();
+
+  // ── ヘッダー描画 ──
+  const hdrCX = colX + colW / 2;
+  let hy = topY + HDR_TOP + DAY_FS;   // テキストのベースライン
+
+  ctx.save();
+  ctx.fillStyle = headerText;
+  ctx.font = `600 ${DAY_FS}px 'Noto Serif JP','Hiragino Mincho ProN',serif`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = isWhite ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.5)'; ctx.shadowBlur = isWhite ? 4 : 14;
+  ctx.fillText(cfg.label, hdrCX, hy);
+  ctx.restore();
+  hy += HDR_GAP1 + DATE_FS;
+
+  ctx.save();
+  ctx.fillStyle = headerDate;
+  ctx.font = `300 ${DATE_FS}px 'Noto Serif JP','Hiragino Mincho ProN',serif`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = isWhite ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.35)'; ctx.shadowBlur = isWhite ? 2 : 7;
+  ctx.fillText(cfg.dateStr, hdrCX, hy);
+  ctx.restore();
+  hy += HDR_GAP2 + RANGE_FS;
+
+  const tRange = `${String(cfg.startH).padStart(2,'0')}:${String(cfg.startM).padStart(2,'0')} — ${String(cfg.endH).padStart(2,'0')}:${String(cfg.endM).padStart(2,'0')}`;
+  ctx.save();
+  ctx.fillStyle = headerRange;
+  ctx.font = `300 ${RANGE_FS}px 'Noto Serif JP','Hiragino Mincho ProN',serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(tRange, hdrCX, hy);
+  ctx.restore();
+
+  // セパレータ
+  const sepY = topY + HDR_H;
+  hline(ctx, sepY, colX + 20, colX + colW - 20, COLOR, 0.35, 1.5);
+
+  // ── グリッドゾーン開始 ──
+  const gridTop = sepY + 14;
+
+  // 時刻ラベル + グリッド線
+  for(let min = 0; min <= totalMin; min += 30){
+    const ty     = gridTop + min * pxPerMin;
+    const absMin = startMin + min;
+    const hh     = Math.floor(absMin / 60);
+    const mm     = absMin % 60;
+    const isLast  = hh === 19 && mm === 0;
+    const label  = isLast ? 'ラスト' : `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    const isHour = mm === 0;
+
+    // グリッド線 (イベントバーエリアのみ)
+    hline(ctx, ty, GRID_X, colX + colW - PAD_R,
+      isHour ? gridLineHour : gridLineHalf,
+      1, isHour ? 1.5 : 1);
+
+    // 時刻テキスト
+    ctx.save();
+    ctx.fillStyle  = isHour ? timeLabelHour : timeLabelHalf;
+    ctx.font       = isHour
+      ? "300 20px 'Noto Serif JP','Hiragino Mincho ProN',serif"
+      : "300 15px 'Noto Serif JP','Hiragino Mincho ProN',serif";
+    ctx.textAlign  = 'right';
+    ctx.shadowBlur = 0;
+    ctx.fillText(label, GRID_X - GAP_TG, ty + 6);
+    ctx.restore();
+  }
+
+  // イベントブロック
+  events.forEach(ev => {
+    const s = toMin(ev.timeStart) - startMin;
+    const e = toMin(ev.timeEnd)   - startMin;
+    if(e <= s) return;
+    const ey = gridTop + s * pxPerMin;
+    const eh = (e - s) * pxPerMin;
+    const EX = GRID_X + 4;
+    const EW = GRID_W - 8;
+
+    ctx.save();
+    ctx.globalAlpha = 0.88;
+    ctx.fillStyle = ev.color;
+    ctx.beginPath(); ctx.roundRect(EX, ey+2, EW, eh-4, 10); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(EX, ey+2, EW, eh-4, 10); ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(EX, ey, EW, eh); ctx.clip();
+
+    const timeLabel = `${ev.timeStart}〜${ev.timeEnd}`;
+    const lines     = (ev.name||'—').split('\n').filter(l=>l.trim()!=='');
+    const lineCount = lines.length || 1;
+    const hasRoom   = eh >= 60;
+
+    // 名前フォントサイズ（改行行数に応じて調整）
+    const fSize = hasRoom
+      ? Math.min(38, Math.max(20, (eh - 48) / (lineCount + 1) * 0.95))
+      : Math.min(30, Math.max(16, eh * 0.45));
+
+    // 時間ラベルフォントサイズ
+    const tSize = Math.max(24, fSize * 0.90);
+
+    const cx = EX + EW / 2;
+
+    ctx.shadowBlur = 0;
+    ctx.textAlign  = 'center';
+
+    if(hasRoom){
+      const lineH   = fSize * 1.25;
+      const totalH  = lineCount * lineH + tSize + 10;
+      let   curY    = ey + eh/2 - totalH/2 + fSize;
+
+      // イベント名（複数行）
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `600 ${fSize}px 'Noto Serif JP','Hiragino Mincho ProN',serif`;
+      lines.forEach(line => {
+        ctx.fillText(line, cx, curY, EW - 16);
+        curY += lineH;
+      });
+
+      // 時間ラベル
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.font = `400 ${tSize}px 'Noto Serif JP','Hiragino Mincho ProN',serif`;
+      ctx.fillText(timeLabel, cx, curY + tSize * 0.2, EW - 16);
+    } else {
+      // 高さが狭い場合は1行で
+      const label = `${lines.join(' ')} ${timeLabel}`;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `600 ${fSize}px 'Noto Serif JP','Hiragino Mincho ProN',serif`;
+      ctx.fillText(label, cx, ey + eh/2 + fSize*0.35, EW - 12);
+    }
+
+    ctx.restore();
+    ctx.shadowBlur = 0;
+  });
+}
+
+async function generate(){
+  const btn=document.getElementById('gen-btn');
+  btn.textContent='生成中…';btn.disabled=true;
+  try{
+    await Promise.all([
+      document.fonts.load("300 36px 'Noto Serif JP'"),
+      document.fonts.load("400 36px 'Noto Serif JP'"),
+      document.fonts.load("500 36px 'Noto Serif JP'"),
+      document.fonts.load("600 36px 'Noto Serif JP'"),
+    ]);
+  }catch(e){}
+
+  const canvas=document.getElementById('wallpaper-canvas');
+  canvas.width=CW;canvas.height=CH;
+  const ctx=canvas.getContext('2d');
+
+  // 背景
+  if(currentTheme === 'white'){
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0,0,CW,CH);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(180,180,210,0.18)';
+    ctx.lineWidth = 1;
+    for(let x=0;x<CW;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke();}
+    for(let y=0;y<CH;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();}
+    ctx.restore();
+  } else if(currentTheme === 'sparkle'){
+    // 水色グラデーション背景
+    const bg=ctx.createLinearGradient(0,0,CW,CH);
+    bg.addColorStop(0,'#8ab8dc');bg.addColorStop(0.5,'#7aaad0');bg.addColorStop(1,'#5c8ec8');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,CW,CH);
+    // きらきら粒子
+    ctx.save();
+    for(let i=0;i<4000;i++){
+      const x=Math.random()*CW, y=Math.random()*CH;
+      const r=Math.random();
+      ctx.fillStyle=`rgba(255,255,255,${r*0.06})`;
+      ctx.beginPath();ctx.arc(x,y,Math.random()*1.8,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+    // 大きめの輝き
+    [[120,300,60,.18,6],[900,500,40,.14,5],[500,900,80,.20,8],
+     [150,1200,50,.16,6],[950,1400,60,.18,7],[300,1700,45,.14,5],
+     [800,2000,55,.16,6],[100,2200,35,.12,5]].forEach(([x,y,r,a,rv])=>{
+      drawSparkle(ctx,x,y,r,'#FFFFFF',a,rv);
+    });
+  } else {
+    const bg=ctx.createLinearGradient(0,0,CW,CH);
+    bg.addColorStop(0,'#7A88BF');bg.addColorStop(0.5,'#9088B8');bg.addColorStop(1,'#8868A8');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,CW,CH);
+    ctx.save();
+    for(let i=0;i<3000;i++){
+      const x=Math.random()*CW,y=Math.random()*CH;
+      ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.025})`;
+      ctx.fillRect(x,y,1.5,1.5);
+    }
+    ctx.restore();
+    [[180,500,90,.25,8],[130,650,55,.18,6],[940,900,70,.2,8],
+     [80,1500,50,.15,6],[980,1650,60,.18,7],[200,1800,45,.14,6]].forEach(([x,y,r,a,rv])=>{
+      drawSparkle(ctx,x,y,r,'#FFFFFF',a,rv);
+    });
+    drawPinwheel(ctx,CW/2,280,160,0.22);
+  }
+
+  // タイトルエリア
+  const isWhiteBg   = currentTheme === 'white';
+  const isSparkleBg = currentTheme === 'sparkle';
+  let y=BLANK_Y;
+  ctx.save();
+  ctx.strokeStyle= isWhiteBg ? 'rgba(100,100,160,0.20)' : 'rgba(255,255,255,0.35)';
+  ctx.lineWidth=1;
+  ctx.setLineDash([4,8]);
+  ctx.beginPath();ctx.moveTo(180,y+10);ctx.lineTo(CW-180,y+10);ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+  y+=52;
+
+  ctx.fillStyle= isWhiteBg ? '#2A2A5A' : '#FFFFFF';
+  ctx.font="500 70px 'Noto Serif JP','Hiragino Mincho ProN',serif";
+  ctx.textAlign='center';
+  ctx.shadowColor= isWhiteBg ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.25)'; ctx.shadowBlur= isWhiteBg ? 4 : 14;
+  ctx.fillText('KODAIRA祭　2026',CW/2,y);
+  ctx.shadowBlur=0;y+=96;
+
+  ctx.fillStyle= isWhiteBg ? 'rgba(40,40,90,0.65)' : 'rgba(255,255,255,0.82)';
+  ctx.font="300 30px 'Noto Serif JP','Hiragino Mincho ProN',serif";
+  ctx.textAlign='center';
+  ctx.shadowColor= isWhiteBg ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.25)'; ctx.shadowBlur= isWhiteBg ? 2 : 6;
+  ctx.fillText('二〇二六年 六月十三日・十四日',CW/2,y);
+  ctx.shadowBlur=0;y+=66;
+
+  hline(ctx,y,160,CW-160, isWhiteBg ? 'rgba(80,80,140,0.20)' : 'rgba(255,255,255,0.35)',1,1.5);
+  y+=56;
+
+  // ── 2カラム: 左右対称、中央に 30px のギャップ ──
+  const GAP    = 30;
+  const colW   = (CW - GAP) / 2;   // = 630
+  const col1X  = 0;
+  const col2X  = colW + GAP;        // = 660
+
+  // 中央区切り線
+  ctx.save();
+  ctx.strokeStyle= isWhiteBg ? 'rgba(100,100,160,0.15)' : 'rgba(255,255,255,0.22)';
+  ctx.lineWidth=1.5;
+  ctx.setLineDash([4,8]);
+  ctx.beginPath();ctx.moveTo(CW/2,y-10);ctx.lineTo(CW/2,CH-80);ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+
+  drawDayCol(ctx, col1X, colW, y, 'day1', state.day1);
+  drawDayCol(ctx, col2X, colW, y, 'day2', state.day2);
+
+  if(currentTheme === 'color') drawPinwheel(ctx,CW/2,CH-120,80,0.15);
+
+  const img=document.getElementById('preview-img');
+  img.src=canvas.toDataURL('image/jpeg',.93);
+  const sec=document.getElementById('preview-sec');
+  sec.style.display='block';
+  setTimeout(()=>sec.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+  btn.textContent='壁紙を生成する';btn.disabled=false;
+}
+
+initPresets();
+</script>
+</body>
+</html>
